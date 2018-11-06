@@ -1,0 +1,257 @@
+#include <SPI.h>
+#include <Ethernet.h>
+ 
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+IPAddress ip(192, 168, 0, 29);
+EthernetServer server(80);
+
+int sensibilidad = 250;
+int refreshPage =7;
+ 
+const int pinLed1 = 22;
+const int pinLed2 = 24;
+const int pinLed3 = 26;
+const int pinLed4 = 28;
+const int pinLed5 = 30;
+const int sensorM1 = 36;
+const int sensorM2 = 38;
+const int sensorH = 40;
+const int buzzerM = 44;
+const int buzzerH = 48;
+
+void setup(){
+  Serial.begin(9600);
+ 
+  Ethernet.begin(mac, ip);
+  server.begin();
+ 
+  Serial.print("server is at ");
+  Serial.println(Ethernet.localIP());
+ 
+  pinMode(pinLed1, OUTPUT);
+  pinMode(pinLed2, OUTPUT);
+  pinMode(pinLed3, OUTPUT);
+  pinMode(pinLed4, OUTPUT);
+  pinMode(pinLed5, OUTPUT);
+  pinMode(sensorM1, INPUT);
+  pinMode(sensorM2, INPUT);
+  pinMode(sensorH, INPUT);
+  pinMode(buzzerM, OUTPUT);
+  pinMode(buzzerH, OUTPUT);
+  
+  digitalWrite(pinLed1, LOW);
+  digitalWrite(pinLed2, LOW);
+  digitalWrite(pinLed3, LOW);
+  digitalWrite(pinLed4, LOW);
+  digitalWrite(pinLed5, LOW);
+
+  for(int i = 0; i < 11; i++){
+      Serial.print(".");
+      delay(1000);
+  }
+}
+ 
+void loop(){
+  EthernetClient client = server.available(); 
+  if (client)
+  {
+    Serial.println("new client");
+    Serial.print(analogRead(sensorH));
+    bool currentLineIsBlank = true;
+    String cadena = "";
+    while (client.connected()){
+      if(digitalRead(sensorM1) == LOW || digitalRead(sensorM2) == LOW){
+        tone(buzzerM,65535,200);
+      }
+      else{
+        noTone(buzzerM);
+      }
+      if (client.available()) 
+      {
+        char c = client.read();
+        Serial.write(c);
+ 
+        if (cadena.length()<50){
+          cadena.concat(c);
+           // Buscar campo data
+          int posicion = cadena.indexOf("data");
+          String command = cadena.substring(posicion);
+ 
+          if(command == "data1=0"){
+              digitalWrite(pinLed1, HIGH);
+          }
+          else
+              if (command == "data1=1"){
+                  digitalWrite(pinLed1, LOW);
+              }
+          else
+              if (command == "data2=0"){
+                  digitalWrite(pinLed2, HIGH);
+              }
+          else
+              if (command == "data2=1"){
+                  digitalWrite(pinLed2, LOW);
+              }
+          else
+              if (command == "data3=0"){
+                  digitalWrite(pinLed3, HIGH);
+              }
+          else
+              if (command == "data3=1"){
+                  digitalWrite(pinLed3, LOW);
+              }
+          else
+              if (command == "data4=0"){
+                  digitalWrite(pinLed4, HIGH);
+              }
+          else
+              if (command == "data4=1"){
+                  digitalWrite(pinLed4, LOW);
+              }
+          else
+              if (command == "data5=0"){
+                  digitalWrite(pinLed5, HIGH);
+              }
+          else
+              if (command == "data5=1"){
+                  digitalWrite(pinLed5, LOW);
+              }
+          }
+           
+        // Al recibir linea en blanco, servir página a cliente
+        if (c == '\n' && currentLineIsBlank){
+          client.println("HTTP/1.1 200 OK\nContent-Type: text/html");
+          client.println("Connection: close");
+          client.println("Refresh: 30");
+          client.println();
+
+          client.println("<meta http-equiv='Content-Type' content='text/html; charset=UTF-8'/>");
+          client.println("<html>");
+          client.println("<head>");
+          client.println("<title>Casa Domótica</title>");
+          client.println("</head>");
+          
+          client.println("<body>");
+          client.print("<table style='text-align:center;'border='1' align='center' bordercolor='#0B2F3A' cellpadding='2' cellspacing='0'>");
+          client.println("<tbody>");
+          client.println("<tr><td align='center'><h1><FONT FACE='helvetica'><p style='color:white'>Casa Domótica</h1></p></FONT></tr></td>");
+          client.println("</tbody>");
+          client.println("</table>");
+          
+          client.println("<body bgcolor= '#0B2F3A'>");
+          //client.println("<div style='text-align:center;'>");
+          
+          /*-----------------------Inicio Bloque Estado de Luces-------------------------*/  
+          client.print("<table class='egt' style='text-align:center;'border='1' align='center' bordercolor='#0B2F3A' cellpadding='2' cellspacing='0'>");
+          client.print("<tbody>");
+          client.print("<tr>");
+          client.print("<td align='center'><h2><div style='padding:12px;background-color:#424242;line-height:0.1;'><FONT FACE='helvetica'><p style='color:white'>Control de Luces</p></div></FONT></h2>");
+          
+          client.print("<table style='text-align:center;'border='1' align='center' bordercolor='#819FF7' cellpadding='2' cellspacing='0'>");
+          client.print("<tbody>");
+          client.print("<tr>");
+          client.print("<td WIDTH='150' colspan='2'><div style='padding:12px;background-color:#424242;line-height:0.1;'><FONT FACE='helvetica'><p style='color:white'>Estado Sala</p></FONT></div></td>");
+          client.print("<td WIDTH='150' colspan='2'><div style='padding:12px;background-color:#424242;line-height:0.1;'><FONT FACE='helvetica'><p style='color:white'>Estado Comedor</p></FONT></div></td>");
+          client.print("<td WIDTH='150' colspan='2'><div style='padding:12px;background-color:#424242;line-height:0.1;'><FONT FACE='helvetica'><p style='color:white'>Estado Cocina</p></FONT></div></td>");
+          client.print("</tr>");
+          client.print("<tr>");
+          client.println(digitalRead(pinLed1) == LOW ? "<td colspan='2'><div style='padding:12px;background-color:#FF0000;line-height:0.1;'><FONT FACE='helvetica'>OFF</FONT></div></td>" : "<td colspan='2'><div style='padding:12px;background-color:#00FF00;line-height:0.1;'><FONT FACE='helvetica'>ON</FONT></div></td>");
+          client.println(digitalRead(pinLed2) == LOW ? "<td colspan='2'><div style='padding:12px;background-color:#FF0000;line-height:0.1;'><FONT FACE='helvetica'>OFF</FONT></div></td>" : "<td colspan='2'><div style='padding:12px;background-color:#00FF00;line-height:0.1;'><FONT FACE='helvetica'>ON</FONT></div></td>");
+          client.println(digitalRead(pinLed3) == LOW ? "<td colspan='2'><div style='padding:12px;background-color:#FF0000;line-height:0.1;'><FONT FACE='helvetica'>OFF</FONT></div></td>" : "<td colspan='2'><div style='padding:12px;background-color:#00FF00;line-height:0.1;'><FONT FACE='helvetica'>ON</FONT></div></td>");
+          client.print("</tr>");
+          client.print("<tr>");
+          client.println("<td><button style='width:90px; height:25px' onClick=location.href='./?data1=0'>ON</button></td>");
+          client.println("<td><button style='width:90px; height:25px' onClick=location.href='./?data1=1'>OFF</button></td>");
+          client.println("<td><button style='width:90px; height:25px' onClick=location.href='./?data2=0'>ON</button></td>");
+          client.println("<td><button style='width:90px; height:25px' onClick=location.href='./?data2=1'>OFF</button></td>");
+          client.println("<td><button style='width:90px; height:25px' onClick=location.href='./?data3=0'>ON</button></td>");
+          client.println("<td><button style='width:90px; height:25px' onClick=location.href='./?data3=1'>OFF</button></td>");
+          client.print("</tr>");
+          client.print("</tbody>");
+          client.print("</table>");
+         
+          client.print("<table style='text-align:center;'border='1' align='center' bordercolor='#819FF7' cellpadding='2' cellspacing='0'>");
+          client.print("<tbody>");
+          client.print("<tr>");
+          client.print("<td WIDTH='150' colspan='2'><div style='padding:12px;background-color:#424242;line-height:0.1;'><FONT FACE='helvetica'><p style='color:white'> Estado  Habitación </p></FONT></div></td>");
+          client.print("<td WIDTH='150' colspan='2'><div style='padding:12px;background-color:#424242;line-height:0.1;'><FONT FACE='helvetica'><p style='color:white'>Estado Baño</p></FONT></div></td>");
+          client.print("</tr>");
+          client.print("<tr>");
+          client.println(digitalRead(pinLed4) == LOW ? "<td colspan='2'><div style='padding:12px;background-color:#FF0000;line-height:0.1;'><FONT FACE='helvetica'>OFF</FONT></div></td>" : "<td colspan='2'><div style='padding:12px;background-color:#00FF00;line-height:0.1;'><FONT FACE='helvetica'>ON</FONT></div></td>");
+          client.println(digitalRead(pinLed5) == LOW ? "<td colspan='2'><div style='padding:12px;background-color:#FF0000;line-height:0.1;'><FONT FACE='helvetica'>OFF</FONT></div></td>" : "<td colspan='2'><div style='padding:12px;background-color:#00FF00;line-height:0.1;'><FONT FACE='helvetica'>ON</FONT></div></td>");    
+          client.print("</tr>");
+          client.print("<tr>");
+          client.println("<td><button style='width:90px; height:25px' onClick=location.href='./?data4=0'>ON</button></td>");
+          client.println("<td><button style='width:90px; height:25px' onClick=location.href='./?data4=1'>OFF</button></td>");
+          client.println("<td><button style='width:90px; height:25px' onClick=location.href='./?data5=0'>ON</button></td>");
+          client.println("<td><button style='width:90px; height:25px' onClick=location.href='./?data5=1'>OFF</button></td>");
+          client.print("</tr>");
+          client.print("</tbody>");
+          client.print("</table>");
+
+          client.print("</td>");
+          client.print("</tr>");
+          client.print("</tbody>");
+          client.print("</table>");
+          
+          client.println("<br/><br/>");
+          
+          /*-----------------------Fin bloque Control de luces-------------------------*/
+
+          /*-----------------------Inicio Bloque Estado de Sensores-------------------------*/  
+          
+          client.print("<table class='egt' style='text-align:center;'border='1' align='center' bordercolor='#0B2F3A' cellpadding='2' cellspacing='0'>");
+          client.print("<tbody>");
+          client.print("<tr>");
+          client.print("<td align='center'><h2><div style='padding:12px;background-color:#424242;line-height:0.1;'><FONT FACE='helvetica'><p style='color:white'>Estado de Sensores</p></div></FONT></h2>");
+          
+          client.print("<table class='egt' style='text-align:center;'border='1' align='center' bordercolor='#819FF7' cellpadding='2' cellspacing='0'>");
+          client.print("<tbody>");
+          client.print("<tr>");
+          client.print("<td WIDTH='155' colspan='1'><div style='padding:12px;background-color:#424242;line-height:0.1;'><FONT FACE='helvetica'><p style='color:white'>Movimiento Sala</p></FONT></div></td>");
+          client.print("<td WIDTH='155' colspan='1'><div style='padding:12px;background-color:#424242;line-height:0.1;'><FONT FACE='helvetica'><p style='color:white'>Movimiento Jardin</p></FONT></div></td>");
+          client.print("<td WIDTH='155' colspan='1'><div style='padding:12px;background-color:#424242;line-height:0.1;'><FONT FACE='helvetica'><p style='color:white'>Humo</p></FONT></div></td>");
+          client.print("</tr>");
+          client.print("<tr>");
+          client.println(digitalRead(sensorM1) == LOW ? "<td><div style='padding:12px;background-color:#FF0000;line-height:0.1;'><FONT FACE='helvetica'>Inactivo</FONT></div></td>" : "<td><div style='padding:12px;background-color:#00FF00;line-height:0.1;'><FONT FACE='helvetica'>Detectado</FONT></div></td>");
+          client.println(digitalRead(sensorM2) == LOW ? "<td><div style='padding:12px;background-color:#FF0000;line-height:0.1;'><FONT FACE='helvetica'>Inactivo</FONT></div></td>" : "<td><div style='padding:12px;background-color:#00FF00;line-height:0.1;'><FONT FACE='helvetica'>Detectado</FONT></div></td>");
+          client.println((digitalRead(sensorH) > 300) ? "<td><div style='padding:12px;background-color:#FF0000;line-height:0.1;'><FONT FACE='helvetica'>Normal</FONT></div></td>" : "<td><div style='padding:12px;background-color:#00FF00;line-height:0.1;'><FONT FACE='helvetica'>Fuga</FONT></div></td>");
+          client.print("</tr>");
+          client.print("</tbody>");
+          client.print("</table>");
+          
+          client.print("</td>");
+          client.print("</tr>");
+          client.print("</tbody>");
+          client.print("</table>");
+          
+          
+          
+          client.println("<br/><br/>");
+          
+          client.println("<a href='http://192.168.0.29'>Refresh</a>");
+          client.println("\n<h3 align=\"center\">&copy;<FONT FACE='helvetica'> Har21 - A <br> ITCA-FEPADE - 2018.</FONT>");
+          client.println("<br/><br/>");
+
+          /*-------------------------Funciones de cuerpo--------------------------------------------*/
+          
+          /*-------------------------Termina Funciones de cuerpo--------------------------------------------*/
+          
+          
+          client.println("</div>\n</body></html>");
+          break;
+        }
+        if(c == '\n'){
+            currentLineIsBlank = true;
+        }
+        else
+          if(c != '\r'){
+              currentLineIsBlank = false;
+          }
+      }
+    }
+ 
+    delay(1);
+    client.stop();
+  }
+}
